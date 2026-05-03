@@ -1,0 +1,34 @@
+Package: biblioCNKI
+Type: Package
+Title: Bibliometric Analysis Toolkit for CNKI Chinese Literature Data
+Version: 1.0.0
+Authors@R: c(
+    person("Zhang", "Kai", role = c("aut", "cre"), email = "kai@example.com"),
+    person("Xu", "Yang", role = "aut"))
+Description: Provides functions to clean, process and visualize citation data downloaded from CNKI. Includes a Shiny app for cumulative trends, keyword dumbbell plots, institutional heatmaps via Amap geocoding, and AI Chinese word segmentation (DeepSeek or local LLM). No translation needed – fully focused on Chinese literature.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Imports:
+    readxl,
+    dplyr,
+    tidyr,
+    ggplot2,
+    stringr,
+    lubridate,
+    writexl,
+    openxlsx,
+    httr,
+    jsonlite,
+    leaflet,
+    leaflet.extras,
+    htmlwidgets,
+    shiny,
+    shinythemes,
+    DT,
+    magrittr,
+    stats,
+    utils
+Suggests:
+    testthat
+RoxygenNote: 7.3.1
