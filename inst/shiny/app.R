@@ -90,11 +90,9 @@ ui <- navbarPage(
                     value = "http://localhost:1234/v1/chat/completions"),
           textInput("local_api_key", "API Key (如模型无需密钥可留空)", value = "")
         ),
-        selectInput("ds_model", "模型",
-                    choices = c("deepseek-v4-flash", "deepseek-v4-pro", "local-model"),
-                    selected = "deepseek-v4-flash"),
-        fileInput("segment_file", "上传包含中文文本的Excel (列名建议: AB 或 TI)"),
-        textAreaInput("user_text", "或直接输入中文文本", rows = 6,
+        textInput("ds_model", "模型名称（DeepSeek默认 deepseek-v4-flash，本地/自定义需填写）", value = "deepseek-v4-flash"),
+        fileInput("segment_file", "上传补充文本Excel (可选，仅当未清洗或无清洗数据时使用)"),
+        textAreaInput("user_text", "或直接输入中文文本（补充清洗数据）", rows = 6,
                       placeholder = "在此粘贴中文摘要、标题或关键词..."),
         actionButton("segment_btn", "开始分词"),
         br(), br(),
@@ -113,7 +111,8 @@ server <- function(input, output, session) {
     clean = NULL,
     kw    = NULL,
     geo   = NULL,
-    seg_words = NULL
+    seg_words = NULL,
+    dumb_plot = NULL
   )
   
   # 消息通知辅助函数
@@ -191,17 +190,30 @@ server <- function(input, output, session) {
   )
   
   # ---------- 4. 关键词哑铃图 ----------
-  dumb_plot <- eventReactive(input$dumb_plot, {
-    req(rv$kw)
-    biblioCNKI::keydumbbell_plot(rv$kw, input$start_year, input$end_year, input$top_n)
+  observeEvent(input$dumb_plot, {
+    if (is.null(rv$kw)) {
+      notify("请先在「数据导入与清洗」标签页点击「提取关键词」", "error")
+      return()
+    }
+    tryCatch({
+      rv$dumb_plot <- biblioCNKI::keydumbbell_plot(rv$kw, input$start_year, input$end_year, input$top_n)
+      notify("哑铃图生成完成！")
+    }, error = function(e) {
+      notify(paste("哑铃图生成失败:", e$message), "error")
+      rv$dumb_plot <- NULL
+    })
   })
-  
-  output$dumbPlot <- renderPlot({ dumb_plot() })
+
+  output$dumbPlot <- renderPlot({
+    req(rv$dumb_plot)
+    rv$dumb_plot
+  })
   
   output$dl_dumb <- downloadHandler(
     filename = "keyword_dumbbell.png",
     content = function(file) {
-      ggsave(file, plot = dumb_plot(), width = 15, height = 18, units = "cm", dpi = 150)
+      req(rv$dumb_plot)
+      ggsave(file, plot = rv$dumb_plot, width = 15, height = 18, units = "cm", dpi = 150)
     }
   )
   
@@ -240,38 +252,53 @@ server <- function(input, output, session) {
   
   # ---------- 6. AI中文分词 ----------
   observeEvent(input$segment_btn, {
-    # 确定 API 参数
-    if (input$api_mode == "cloud") {
-      base_url <- "https://api.deepseek.com/v1/chat/completions"
-      api_key <- input$ds_api_key
-    } else {
-      base_url <- input$local_base_url
-      api_key <- if (nzchar(input$local_api_key)) input$local_api_key else "no-key"
-    }
-    
-    # 收集文本
+    # 收集文本：优先使用清洗后的数据，再补充上传文件和手动输入
     text <- ""
+
+    # 1) 从清洗后的数据中提取 Title 和 Summary
+    if (!is.null(rv$clean)) {
+      title_text <- if ("Title" %in% names(rv$clean)) {
+        paste(rv$clean$Title, collapse = "\n\n")
+      } else ""
+      summary_text <- if ("Summary" %in% names(rv$clean)) {
+        paste(rv$clean$Summary, collapse = "\n\n")
+      } else ""
+      text <- paste(title_text, summary_text, sep = "\n\n")
+      notify(sprintf("已从清洗数据中提取 %d 条标题和摘要", nrow(rv$clean)), "message")
+    }
+
+    # 2) 上传的 Excel 文件（补充来源）
     if (!is.null(input$segment_file)) {
       df <- readxl::read_excel(input$segment_file$datapath)
-      possible_cols <- intersect(c("AB", "TI", "Abstract", "Title"), names(df))
+      possible_cols <- intersect(c("Title", "Summary", "AB", "TI", "Abstract"), names(df))
       if (length(possible_cols) > 0) {
-        text <- paste(df[[possible_cols[1]]], collapse = "\n\n")
+        file_text <- paste(df[[possible_cols[1]]], collapse = "\n\n")
+        text <- paste(text, file_text, sep = "\n\n")
       } else {
-        text <- paste(df[[1]], collapse = "\n\n")
-        notify("未检测到标准列名，已使用第一列内容进行分词", "warning")
+        text <- paste(text, paste(df[[1]], collapse = "\n\n"), sep = "\n\n")
+        notify("上传文件未检测到标准列名，已使用第一列内容补充", "warning")
       }
     }
+
+    # 3) 手动输入的文本
     if (nzchar(input$user_text)) {
-      text <- paste(text, input$user_text, sep = "\n")
+      text <- paste(text, input$user_text, sep = "\n\n")
     }
-    
+
     if (nchar(trimws(text)) == 0) {
-      notify("请上传文件或输入文本", "error")
+      notify("请先进行数据清洗，或上传文件，或输入文本", "error")
       return()
     }
     
     withProgress(message = "正在分词...", {
-      res <- biblioCNKI::segment_chinese_with_deepseek(text, api_key, base_url, model = input$ds_model)
+      provider <- if (input$api_mode == "cloud") "deepseek" else "custom"
+      res <- biblioCNKI::segment_chinese_with_deepseek(
+        text,
+        api_key   = if (input$api_mode == "cloud") input$ds_api_key else input$local_api_key,
+        provider  = provider,
+        custom_url = if (input$api_mode == "local") input$local_base_url else NULL,
+        model     = input$ds_model
+      )
     })
     
     if (res$success) {

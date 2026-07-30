@@ -32,11 +32,15 @@ keydumbbell_plot <- function(keyword_data, start_year, end_year, top_n, output =
     ) %>%
     dplyr::arrange(Q1)
 
+  x_range <- range(c(stats$Q1, stats$Q3))
+  year_breaks <- seq(floor(x_range[1]), ceiling(x_range[2]), by = 1)
+
   p <- ggplot(stats, aes(x = Q1, xend = Q3, y = factor(Keyword, levels = Keyword))) +
     geom_segment(color = "gray", linewidth = 1) +
     geom_point(aes(x = Q1), color = "#90EE90", size = 2) +
     geom_point(aes(x = Q3), color = "#8B0000", size = 2) +
     geom_point(aes(x = Median, size = Count/2), color = "#A3B9C4") +
+    scale_x_continuous(breaks = year_breaks) +
     theme_minimal() +
     labs(
       x = "Year", y = "Keywords",

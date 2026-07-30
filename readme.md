@@ -23,3 +23,11 @@ install.packages(c("shiny", "shinythemes", "DT", "readxl", "dplyr", "tidyr",
 
 # 从本地安装 biblioCNKI 包
 devtools::install("TianyaImpression/biblioCNKI")
+```r
+
+## 启动biblioCNKI shiny APP
+
+```r
+library(biblioCNKI)
+launch_shiny()
+```r

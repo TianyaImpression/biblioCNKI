@@ -17,7 +17,8 @@ process_citation_data <- function(input, sheet = 1, output = NULL) {
       Author = `Author-作者`,
       AuthorAddress = `Organ-单位`,
       RawDate = `PubTime-发表时间`,
-      Keyword = `Keyword-关键词`
+      Keyword = `Keyword-关键词`,
+      Summary = `Summary-摘要`
     ) %>%
     dplyr::filter(stats::complete.cases(.)) %>%
     dplyr::mutate(
@@ -30,7 +31,7 @@ process_citation_data <- function(input, sheet = 1, output = NULL) {
         as.Date(),
       Pid = dplyr::row_number()
     ) %>%
-    dplyr::select(Pid, Title, Author, AuthorAddress, Date, Keyword)
+    dplyr::select(Pid, Title, Author, AuthorAddress, Date, Keyword, Summary)
 
   if (!is.null(output)) {
     writexl::write_xlsx(df, path = output)

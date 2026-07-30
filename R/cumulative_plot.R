@@ -11,7 +11,7 @@ cumulative_plot <- function(cleaned_data, output = NULL) {
   year_range <- range(years, na.rm = TRUE)
   year_seq <- seq(year_range[1], year_range[2])
   yr_count <- as.data.frame(table(Year = years), stringsAsFactors = FALSE)
-  yr_count$Year <- as.integer(yr_count$Year)
+  yr_count$Year <- as.integer(as.character(yr_count$Year))
   df <- merge(data.frame(Year = year_seq), yr_count, by = "Year", all.x = TRUE)
   df$Freq[is.na(df$Freq)] <- 0
   df$Cumulative <- cumsum(df$Freq)
@@ -19,6 +19,7 @@ cumulative_plot <- function(cleaned_data, output = NULL) {
   p <- ggplot(df, aes(x = Year, y = Cumulative)) +
     geom_line(color = "blue") +
     geom_point(color = "blue") +
+    scale_x_continuous(breaks = year_seq) +
     labs(
       title = paste("Cumulative Articles from", year_range[1], "to", year_range[2]),
       x = "Year", y = "Cumulative Count"

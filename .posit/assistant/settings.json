@@ -1,0 +1,11 @@
+{
+  "permission": {
+    "edit": {
+      "*.R": "allow",
+      "*": "allow"
+    },
+    "external_directory": {
+      "D:/R/sciwxzs/*": "allow"
+    }
+  }
+}
