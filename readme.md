@@ -21,13 +21,21 @@ install.packages(c("shiny", "shinythemes", "DT", "readxl", "dplyr", "tidyr",
                    "httr", "jsonlite", "leaflet", "leaflet.extras", "htmlwidgets",
                    "magrittr"))
 
-# 从本地安装 biblioCNKI 包
-devtools::install("TianyaImpression/biblioCNKI")
-```r
+# 方法一：从 GitHub 安装（推荐）
+install.packages("devtools")
+devtools::install_github("TianyaImpression/biblioCNKI")
 
-## 启动biblioCNKI shiny APP
+# 方法二：从本地源码安装（需先下载或克隆仓库）
+# devtools::install("path/to/biblioCNKI")
+```
+
+## 启动 biblioCNKI Shiny APP
 
 ```r
 library(biblioCNKI)
 launch_shiny()
-```r
+```
+
+## 参考文献
+
+张凯, 徐洋, 陈晓娜, 等. 基于文献计量的生态遥感中国知网引文数据集（2010–2024）[J/OL]. 中国科学数据(中英文网络版), 1-10[2026-07-30]. https://link.cnki.net/urlid/11.6035.N.20260611.1432.004.
